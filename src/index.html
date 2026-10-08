@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo App</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
+    pre { background: #f4f4f4; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } pre { background: #222; } }
+  </style>
+</head>
+<body>
+  <h1 id="greeting"></h1>
+  <h2>Build info</h2>
+  <pre id="info">loading…</pre>
+  <p><a href="test-report/results.txt">Test report</a> (produced by the Test workflow)</p>
+  <script src="greeter.js"></script>
+  <script>
+    document.getElementById('greeting').textContent = greet('GitHub Pages');
+    fetch('build-info.json').then(r => r.text()).then(t => document.getElementById('info').textContent = t);
+  </script>
+</body>
+</html>
