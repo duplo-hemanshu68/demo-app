@@ -12,6 +12,9 @@ const info = {
   version: require('../package.json').version,
   commit: process.env.GITHUB_SHA || 'local',
   builtAt: new Date().toISOString(),
+  greetingName: process.env.GREETING_NAME || 'world',
+  environment: process.env.APP_ENV || 'dev',
+  showBuildInfo: process.env.SHOW_BUILD_INFO !== 'false',
 };
 fs.writeFileSync(path.join(dist, 'build-info.json'), JSON.stringify(info, null, 2));
 console.log('Built dist/', info);

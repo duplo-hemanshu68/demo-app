@@ -4,6 +4,20 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      greeting_name:
+        description: Name shown in the greeting
+        type: string
+        default: GitHub Pages
+      environment:
+        description: Target environment label
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      show_build_info:
+        description: Show build info panel on the site
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -11,6 +25,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # On push there are no inputs, so fall back to defaults
+    env:
+      GREETING_NAME: ${{ inputs.greeting_name || 'GitHub Pages' }}
+      APP_ENV: ${{ inputs.environment || 'dev' }}
+      SHOW_BUILD_INFO: ${{ inputs.show_build_info == false && 'false' || 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

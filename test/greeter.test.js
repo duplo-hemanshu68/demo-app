@@ -10,6 +10,9 @@ test('dist contains build info', () => {
   const info = JSON.parse(fs.readFileSync(path.join(dist, 'build-info.json'), 'utf8'));
   assert.ok(info.version);
   assert.ok(info.commit);
+  assert.ok(info.greetingName);
+  assert.ok(['dev', 'staging', 'prod'].includes(info.environment));
+  assert.strictEqual(typeof info.showBuildInfo, 'boolean');
 });
 
 test('greet() default', () => {
