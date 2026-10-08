@@ -1,5 +1,5 @@
 name: 1 - Build
-run-name: Build (${{ inputs.environment || 'dev' }}, greeting=${{ inputs.greeting_name || 'GitHub Pages' }})
+run-name: Build (${{ inputs.environment || 'dev' }}, greeting=${{ inputs.greeting_name || 'GitHub Pages' }}, color=${{ inputs.bg_color || 'white' }})
 
 on:
   push:
@@ -19,6 +19,11 @@ on:
         description: Show build info panel on the site
         type: boolean
         default: true
+      bg_color:
+        description: Webpage background color
+        type: choice
+        options: [white, black, green, red]
+        default: white
 
 permissions:
   contents: read
@@ -31,6 +36,7 @@ jobs:
       GREETING_NAME: ${{ inputs.greeting_name || 'GitHub Pages' }}
       APP_ENV: ${{ inputs.environment || 'dev' }}
       SHOW_BUILD_INFO: ${{ inputs.show_build_info == false && 'false' || 'true' }}
+      BG_COLOR: ${{ inputs.bg_color || 'white' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,6 +51,7 @@ jobs:
             echo "| greeting_name | $GREETING_NAME |"
             echo "| environment | $APP_ENV |"
             echo "| show_build_info | $SHOW_BUILD_INFO |"
+            echo "| bg_color | $BG_COLOR |"
           } >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
       # OUTPUT -> consumed by workflow 2

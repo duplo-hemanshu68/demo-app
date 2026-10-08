@@ -13,6 +13,7 @@ test('dist contains build info', () => {
   assert.ok(info.greetingName);
   assert.ok(['dev', 'staging', 'prod'].includes(info.environment));
   assert.strictEqual(typeof info.showBuildInfo, 'boolean');
+  assert.ok(['white', 'black', 'green', 'red'].includes(info.backgroundColor));
 });
 
 test('greet() default', () => {
