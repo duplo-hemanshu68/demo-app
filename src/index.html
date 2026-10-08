@@ -8,6 +8,14 @@
     body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
     pre { background: #f4f4f4; padding: 1rem; border-radius: 6px; overflow-x: auto; }
     @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } pre { background: #222; } }
+    /* Background chosen via the bg_color build input; overrides the theme defaults above */
+    body.bg-white { background: #fff; color: #111; }
+    body.bg-black { background: #000; color: #eee; }
+    body.bg-green { background: #2e7d32; color: #fff; }
+    body.bg-red   { background: #c62828; color: #fff; }
+    body[class^="bg-"] pre { background: rgba(0, 0, 0, 0.15); }
+    body.bg-white pre { background: #f4f4f4; }
+    body[class^="bg-"] a { color: inherit; }
   </style>
 </head>
 <body>
@@ -23,6 +31,7 @@
       document.getElementById('env').textContent = info.environment;
       document.getElementById('info').textContent = JSON.stringify(info, null, 2);
       document.getElementById('info-panel').hidden = !info.showBuildInfo;
+      document.body.className = 'bg-' + (info.backgroundColor || 'white');
     });
   </script>
 </body>

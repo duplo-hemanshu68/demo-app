@@ -1,0 +1,114 @@
+name: Main Workflow
+run-name: Main (${{ inputs.environment }}, greeting=${{ inputs.greeting_name }}, color=${{ inputs.bg_color }})
+
+# Runs build -> test -> deploy as three jobs in a single workflow.
+# Each job starts only after the previous one has finished successfully (`needs`).
+on:
+  workflow_dispatch:
+    inputs:
+      greeting_name:
+        description: Name shown in the greeting
+        type: string
+        default: GitHub Pages
+      environment:
+        description: Target environment label
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      show_build_info:
+        description: Show build info panel on the site
+        type: boolean
+        default: true
+      bg_color:
+        description: Webpage background color
+        type: choice
+        options: [white, black, green, red]
+        default: white
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GREETING_NAME: ${{ inputs.greeting_name }}
+      APP_ENV: ${{ inputs.environment }}
+      SHOW_BUILD_INFO: ${{ inputs.show_build_info && 'true' || 'false' }}
+      BG_COLOR: ${{ inputs.bg_color }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Show inputs in run summary
+        run: |
+          {
+            echo "### Main Workflow inputs"
+            echo "| Input | Value |"
+            echo "|---|---|"
+            echo "| greeting_name | $GREETING_NAME |"
+            echo "| environment | $APP_ENV |"
+            echo "| show_build_info | $SHOW_BUILD_INFO |"
+            echo "| bg_color | $BG_COLOR |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+      - name: Run tests against build output
+        shell: bash   # enables pipefail so a failing `npm test` fails the job despite `tee`
+        run: |
+          mkdir -p test-report
+          npm test | tee test-report/results.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-build
+          path: |
+            dist/
+            test-report/
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-build
+          path: input/
+      - name: Assemble site
+        run: |
+          mkdir site
+          cp -r input/dist/. site/
+          cp -r input/test-report site/test-report
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+      - id: deployment
+        uses: actions/deploy-pages@v4
