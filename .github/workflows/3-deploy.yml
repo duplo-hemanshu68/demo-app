@@ -1,15 +1,33 @@
 name: 3 - Deploy to GitHub Pages
+run-name: Deploy (${{ inputs.environment }}, greeting=${{ inputs.greeting_name }}, color=${{ inputs.bg_color }})
 
+# Standalone: builds the app itself and deploys it. Not triggered by other workflows.
 on:
-  workflow_run:
-    workflows: ["2 - Test"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      greeting_name:
+        description: Name shown in the greeting
+        type: string
+        default: GitHub Pages
+      environment:
+        description: Target environment label
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      show_build_info:
+        description: Show build info panel on the site
+        type: boolean
+        default: true
+      bg_color:
+        description: Webpage background color
+        type: choice
+        options: [white, black, green, red]
+        default: white
 
 permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read
 
 concurrency:
   group: pages
@@ -17,24 +35,43 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GREETING_NAME: ${{ inputs.greeting_name }}
+      APP_ENV: ${{ inputs.environment }}
+      SHOW_BUILD_INFO: ${{ inputs.show_build_info && 'true' || 'false' }}
+      BG_COLOR: ${{ inputs.bg_color }}
     steps:
-      # INPUT <- artifact produced by workflow 2
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          name: tested-build
-          path: input/
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: 20
+      - run: npm run build
+      - name: Show inputs in run summary
+        run: |
+          {
+            echo "### Deploying with inputs"
+            echo "| Input | Value |"
+            echo "|---|---|"
+            echo "| greeting_name | $GREETING_NAME |"
+            echo "| environment | $APP_ENV |"
+            echo "| show_build_info | $SHOW_BUILD_INFO |"
+            echo "| bg_color | $BG_COLOR |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      # The site links to test-report/results.txt, so generate it here too
+      - name: Generate test report
+        shell: bash
+        run: |
+          mkdir -p test-report
+          npm test | tee test-report/results.txt
       - name: Assemble site
         run: |
           mkdir site
-          cp -r input/dist/. site/
-          cp -r input/test-report site/test-report
+          cp -r dist/. site/
+          cp -r test-report site/test-report
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

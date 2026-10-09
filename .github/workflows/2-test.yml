@@ -1,38 +1,77 @@
 name: 2 - Test
+run-name: Test (${{ inputs.environment }}, greeting=${{ inputs.greeting_name }}, color=${{ inputs.bg_color }})
 
+# Standalone: builds the app itself and tests it. Not triggered by other workflows.
 on:
-  workflow_run:
-    workflows: ["1 - Build"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      greeting_name:
+        description: Name shown in the greeting
+        type: string
+        default: GitHub Pages
+      environment:
+        description: Target environment label
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      show_build_info:
+        description: Show build info panel on the site
+        type: boolean
+        default: true
+      bg_color:
+        description: Webpage background color
+        type: choice
+        options: [white, black, green, red]
+        default: white
 
 permissions:
   contents: read
-  actions: read   # needed to download artifacts from the Build run
 
 jobs:
   test:
-    # Only run if the build succeeded
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    env:
+      GREETING_NAME: ${{ inputs.greeting_name }}
+      APP_ENV: ${{ inputs.environment }}
+      SHOW_BUILD_INFO: ${{ inputs.show_build_info && 'true' || 'false' }}
+      BG_COLOR: ${{ inputs.bg_color }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      # INPUT <- artifact produced by workflow 1
-      - uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: dist/
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run build
+      - name: Show inputs in run summary
+        run: |
+          {
+            echo "### Test inputs"
+            echo "| Input | Value |"
+            echo "|---|---|"
+            echo "| greeting_name | $GREETING_NAME |"
+            echo "| environment | $APP_ENV |"
+            echo "| show_build_info | $SHOW_BUILD_INFO |"
+            echo "| bg_color | $BG_COLOR |"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Run tests against build output
+        shell: bash   # enables pipefail so a failing `npm test` fails the job despite `tee`
         run: |
           mkdir -p test-report
           npm test | tee test-report/results.txt
-      # OUTPUT -> consumed by workflow 3 (verified build + report)
+      - name: Verify build matches inputs
+        run: |
+          node -e '
+            const info = require("./dist/build-info.json");
+            const expected = {
+              greetingName: process.env.GREETING_NAME,
+              environment: process.env.APP_ENV,
+              showBuildInfo: process.env.SHOW_BUILD_INFO === "true",
+              backgroundColor: process.env.BG_COLOR,
+            };
+            for (const [k, v] of Object.entries(expected)) {
+              if (info[k] !== v) { console.error(`${k}: expected ${v}, got ${info[k]}`); process.exit(1); }
+            }
+            console.log("build-info.json matches inputs", expected);
+          '
       - uses: actions/upload-artifact@v4
         with:
           name: tested-build
