@@ -28,6 +28,16 @@ on:
         type: string
         required: false
         default: ''
+      build_label:
+        description: Label of the build being deployed (output of 1 - Build)
+        type: string
+        required: false
+        default: ''
+      tests_passed:
+        description: Number of passing tests (output of 2 - Test)
+        type: string
+        required: false
+        default: ''
       build_run_id:
         description: Run ID of a "1 - Build" run whose build-output artifact to use instead of rebuilding (empty = build here).
         type: string
@@ -85,6 +95,8 @@ jobs:
             echo "| show_build_info | $SHOW_BUILD_INFO |"
             echo "| bg_color | $BG_COLOR |"
             echo "| commit | ${SOURCE_SHA:-$GITHUB_SHA} |"
+            echo "| build_label | ${{ inputs.build_label || '-' }} |"
+            echo "| tests_passed | ${{ inputs.tests_passed || '-' }} |"
             echo "| build artifact | ${{ inputs.build_run_id && format('run {0}', inputs.build_run_id) || 'built in this run' }} |"
           } >> "$GITHUB_STEP_SUMMARY"
       # The site links to test-report/results.txt, so generate it here too
@@ -98,6 +110,15 @@ jobs:
           mkdir site
           cp -r dist/. site/
           cp -r test-report site/test-report
+          # What the pipeline handed this deploy from earlier stages
+          node -e '
+            const e = process.env;
+            require("fs").writeFileSync("site/pipeline.json", JSON.stringify({ build_label: e.IN_LABEL || null, tests_passed: e.IN_TESTS ? Number(e.IN_TESTS) : null, build_run_id: e.IN_RUN || null }, null, 2));
+          '
+        env:
+          IN_LABEL: ${{ inputs.build_label }}
+          IN_TESTS: ${{ inputs.tests_passed }}
+          IN_RUN: ${{ inputs.build_run_id }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

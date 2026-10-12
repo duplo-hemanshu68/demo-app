@@ -28,6 +28,11 @@ on:
         type: string
         required: false
         default: ''
+      build_label:
+        description: Label of the build under test (output of 1 - Build)
+        type: string
+        required: false
+        default: ''
       build_run_id:
         description: Run ID of a "1 - Build" run whose build-output artifact to use instead of rebuilding (empty = build here).
         type: string
@@ -76,6 +81,7 @@ jobs:
             echo "| show_build_info | $SHOW_BUILD_INFO |"
             echo "| bg_color | $BG_COLOR |"
             echo "| commit | ${SOURCE_SHA:-$GITHUB_SHA} |"
+            echo "| build_label | ${{ inputs.build_label || '-' }} |"
             echo "| build artifact | ${{ inputs.build_run_id && format('run {0}', inputs.build_run_id) || 'built in this run' }} |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Run tests against build output
@@ -99,6 +105,16 @@ jobs:
             }
             console.log("build-info.json matches inputs", expected);
           '
+      - name: Publish pipeline outputs
+        run: |
+          mkdir -p pipeline
+          PASSED=$(grep -oE '^ℹ pass [0-9]+' test-report/results.txt | grep -oE '[0-9]+' || echo 0)
+          echo "{\"tests_passed\": $PASSED}" > pipeline/outputs.json
+          cat pipeline/outputs.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-outputs
+          path: pipeline/outputs.json
       - uses: actions/upload-artifact@v4
         with:
           name: tested-build

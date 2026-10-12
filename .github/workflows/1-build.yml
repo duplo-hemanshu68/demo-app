@@ -68,3 +68,17 @@ jobs:
         with:
           name: build-output
           path: dist/
+      # Values for later pipeline stages: the deployment pipeline passes each key to stages declaring that input.
+      - name: Publish pipeline outputs
+        run: |
+          mkdir -p pipeline
+          node -e '
+            const info = require("./dist/build-info.json");
+            const out = { app_version: info.version, build_label: `${info.version}-${info.commit.slice(0, 7)}-${info.environment}` };
+            require("fs").writeFileSync("pipeline/outputs.json", JSON.stringify(out, null, 2));
+            console.log(out);
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-outputs
+          path: pipeline/outputs.json
