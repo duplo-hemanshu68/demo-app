@@ -108,7 +108,7 @@ jobs:
       - name: Publish pipeline outputs
         run: |
           mkdir -p pipeline
-          PASSED=$(grep -oE '^ℹ pass [0-9]+' test-report/results.txt | grep -oE '[0-9]+' || echo 0)
+          PASSED=$(grep -oE '^(ℹ|#) pass [0-9]+' test-report/results.txt | grep -oE '[0-9]+' || echo 0)
           echo "{\"tests_passed\": $PASSED}" > pipeline/outputs.json
           cat pipeline/outputs.json
       - uses: actions/upload-artifact@v4
