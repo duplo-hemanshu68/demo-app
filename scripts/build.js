@@ -16,7 +16,8 @@ if (!BG_COLORS.includes(bgColor)) {
 
 const info = {
   version: require('../package.json').version,
-  commit: process.env.GITHUB_SHA || 'local',
+  // SOURCE_SHA is the commit actually checked out (pinned by a pipeline); GITHUB_SHA is the ref's head.
+  commit: process.env.SOURCE_SHA || process.env.GITHUB_SHA || 'local',
   builtAt: new Date().toISOString(),
   greetingName: process.env.GREETING_NAME || 'world',
   environment: process.env.APP_ENV || 'dev',

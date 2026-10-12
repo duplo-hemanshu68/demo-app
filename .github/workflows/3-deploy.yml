@@ -1,7 +1,7 @@
 name: 3 - Deploy to GitHub Pages
 run-name: Deploy (${{ inputs.environment }}, greeting=${{ inputs.greeting_name }}, color=${{ inputs.bg_color }})
 
-# Standalone: builds the app itself and deploys it. Not triggered by other workflows.
+# Deploys the build of build_run_id (or builds it here when not given), checked out at source_sha.
 on:
   workflow_dispatch:
     inputs:
@@ -23,9 +23,20 @@ on:
         type: choice
         options: [white, black, green, red]
         default: white
+      source_sha:
+        description: Commit to build (empty = the ref's head). Set by a deployment pipeline to pin every stage to one commit.
+        type: string
+        required: false
+        default: ''
+      build_run_id:
+        description: Run ID of a "1 - Build" run whose build-output artifact to use instead of rebuilding (empty = build here).
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
+  actions: read   # download the build artifact from another run
   pages: write
   id-token: write
 
@@ -44,12 +55,25 @@ jobs:
       APP_ENV: ${{ inputs.environment }}
       SHOW_BUILD_INFO: ${{ inputs.show_build_info && 'true' || 'false' }}
       BG_COLOR: ${{ inputs.bg_color }}
+      SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm run build
+      - name: Use the build artifact from run ${{ inputs.build_run_id }}
+        if: inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+      - name: Build (no build run given)
+        if: inputs.build_run_id == ''
+        run: npm run build
       - name: Show inputs in run summary
         run: |
           {
@@ -60,6 +84,8 @@ jobs:
             echo "| environment | $APP_ENV |"
             echo "| show_build_info | $SHOW_BUILD_INFO |"
             echo "| bg_color | $BG_COLOR |"
+            echo "| commit | ${SOURCE_SHA:-$GITHUB_SHA} |"
+            echo "| build artifact | ${{ inputs.build_run_id && format('run {0}', inputs.build_run_id) || 'built in this run' }} |"
           } >> "$GITHUB_STEP_SUMMARY"
       # The site links to test-report/results.txt, so generate it here too
       - name: Generate test report

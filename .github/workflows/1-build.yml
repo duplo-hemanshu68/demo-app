@@ -24,6 +24,11 @@ on:
         type: choice
         options: [white, black, green, red]
         default: white
+      source_sha:
+        description: Commit to build (empty = the ref's head). Set by a deployment pipeline to pin every stage to one commit.
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -37,8 +42,11 @@ jobs:
       APP_ENV: ${{ inputs.environment || 'dev' }}
       SHOW_BUILD_INFO: ${{ inputs.show_build_info == false && 'false' || 'true' }}
       BG_COLOR: ${{ inputs.bg_color || 'white' }}
+      SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -52,9 +60,10 @@ jobs:
             echo "| environment | $APP_ENV |"
             echo "| show_build_info | $SHOW_BUILD_INFO |"
             echo "| bg_color | $BG_COLOR |"
+            echo "| commit | ${SOURCE_SHA:-$GITHUB_SHA} |"
           } >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
-      # OUTPUT -> consumed by workflow 2
+      # OUTPUT -> used by 2 - Test and 3 - Deploy when they get this run's ID as build_run_id
       - uses: actions/upload-artifact@v4
         with:
           name: build-output
