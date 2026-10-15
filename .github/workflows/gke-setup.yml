@@ -15,6 +15,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: kubectl,gke-gcloud-auth-plugin
+
       - name: Check components
         run: |
           echo "Checking components..."
