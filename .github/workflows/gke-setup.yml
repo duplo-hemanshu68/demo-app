@@ -1,8 +1,11 @@
 name: GKE Setup
 run-name: GKE Setup
 
+on:
+  workflow_dispatch:
+
 concurrency:
-  group: pages
+  group: gke-setup
   cancel-in-progress: true
 
 jobs:
@@ -10,11 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 
-      - name: check componets
+        uses: actions/checkout@v4
+
+      - name: Check components
         run: |
           echo "Checking components..."
           gcloud components list
-          kubectl --version
-      
-      
+          kubectl version --client
